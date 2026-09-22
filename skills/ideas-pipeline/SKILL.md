@@ -23,8 +23,10 @@ The user saves ideas from any session. The triage pairs each idea with its proje
    <brief>
    My original note: <text>
    Project: <directory>
-   ideamine idea id: <id>
+
+   Progress: ideamine idea #<id> is the record of this run. After each phase and each gate, add one note to it with the ideamine idea_update tool (id <id>, note), or run `ideamine note <id> "pipeline: <phase>"`. Use notes like "pipeline: research done", "pipeline: storyboard approved", "pipeline: plan approved (3 tasks, 2 waves)", "pipeline: wave 1 integrated", "pipeline: round 1 failed: <one line>".
+   When the tester and the validator both pass, call idea_update with status "done" and a one-line note. If the run stops at its iteration cap or escalates, leave the idea in "doing" and add a note that says what failed and where the reports are.
    ```
 
-   The pipeline records a note on the idea after each phase and marks the idea done when its tests and validation pass. It has two gates where it asks the user for approval; that is expected.
+   The pipeline does not know ideamine; these lines tell it what to record. It has two gates where it asks the user for approval; that is expected.
 6. When the pipeline ends, check the idea with `idea_next` (`id`) or the pipeline's final report. If the pipeline passed and the idea is not yet done, call `idea_update` with status "done" and a one-line note. If work remains, keep status "doing" and write a note that says what remains. Then summarize in 2-3 lines.

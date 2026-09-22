@@ -152,14 +152,27 @@ export function buildPrompt(idea) {
 
 /**
  * The request for the agent pipeline (the `pipeline` skill of the agent-pipeline plugin): the idea,
- * its project, and its id, so the pipeline can record its progress on the idea.
+ * its project, and how to record the progress on the idea. The pipeline does not know ideamine,
+ * so the request carries the instructions.
  */
 export function pipelinePrompt(idea, { dir }) {
   const t = idea.triage;
   const lines = [`/pipeline Build idea #${idea.id} from my ideamine archive: ${idea.title}`];
   if (t?.brief) lines.push(t.brief);
-  lines.push(`My original note: ${idea.text}`, `Project: ${dir}`, `ideamine idea id: ${idea.id}`);
+  lines.push(`My original note: ${idea.text}`, `Project: ${dir}`, '', ...progressInstructions(idea.id));
   return lines.join('\n');
+}
+
+/** What the pipeline orchestrator does with the idea after each phase. Shared with the /ideas-pipeline skill. */
+export function progressInstructions(id) {
+  return [
+    `Progress: ideamine idea #${id} is the record of this run. After each phase and each gate, add one note to it: ` +
+      `run \`ideamine note ${id} "pipeline: <phase>"\`, or call the ideamine idea_update tool with id ${id} and the note. ` +
+      'Use notes like "pipeline: research done", "pipeline: storyboard approved", "pipeline: plan approved (3 tasks, 2 waves)", ' +
+      '"pipeline: wave 1 integrated", "pipeline: round 1 failed: <one line>".',
+    `When the tester and the validator both pass, run \`ideamine done ${id} "<one-line outcome>"\` (or idea_update with status "done"). ` +
+      'If the run stops at its iteration cap or escalates, leave the idea in "doing" and add a note that says what failed and where the reports are.',
+  ];
 }
 
 /** Start an interactive Claude Code session on the recommended model. */

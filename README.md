@@ -169,7 +169,7 @@ server {
 
 `/ideas-go` gives an idea to one subagent. For a big idea, `/ideas-pipeline` gives it to the [agent-pipeline](https://github.com/map588/agents) plugin instead: a researcher maps the project, a story-writer turns the idea into stories, a project manager plans tasks, engineers build them in parallel worktrees, an integrator merges, and a tester and a validator check the result. The pipeline asks you to approve the stories and the plan. `/ideas-go` points to `/ideas-pipeline` when an idea is size L or XL.
 
-The idea is the record of the run. The pipeline adds a note to the idea after each phase (`pipeline: research done`, `pipeline: plan approved`, `pipeline: wave 1 integrated`, ...), marks the idea done when its tests and validation pass, and leaves it in `doing` with a note when it stops at its iteration cap. The dashboard shows the latest note on the ticket in the Doing column, and the drawer shows them all. In a terminal, `ideamine go 12 --pipeline` opens Claude Code with the same request.
+The idea is the record of the run. The request tells the pipeline to add a note to the idea after each phase (`pipeline: research done`, `pipeline: plan approved`, `pipeline: wave 1 integrated`, ...), marks the idea done when its tests and validation pass, and leaves it in `doing` with a note when it stops at its iteration cap. The dashboard shows the latest note on the ticket in the Doing column, and the drawer shows them all. In a terminal, `ideamine go 12 --pipeline` opens Claude Code with the same request.
 
 ## Model routing
 
