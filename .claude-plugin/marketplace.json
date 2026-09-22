@@ -10,7 +10,7 @@
     {
       "name": "ideamine",
       "description": "An idea inbox for Claude Code. /idea saves an idea without a model call. Claude triages the ideas and picks the cheapest model that can build each one.",
-      "version": "0.5.0",
+      "version": "0.6.0",
       "author": {
         "name": "equwal"
       },

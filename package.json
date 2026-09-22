@@ -1,6 +1,6 @@
 {
   "name": "ideamine",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "An idea inbox for Claude Code. /idea saves an idea without calling the model; Claude later triages each idea and picks the cheapest model that can build it.",
   "type": "module",
   "bin": {

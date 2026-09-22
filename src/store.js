@@ -165,7 +165,8 @@ export function lane(idea) {
   return idea.status;
 }
 
-const LANE_ORDER = ['doing', 'do', 'maybe', 'inbox', 'skip', 'done', 'dropped'];
+/** The lanes of the board, in the order they are shown. */
+export const LANES = ['doing', 'do', 'maybe', 'inbox', 'skip', 'done', 'dropped'];
 
 export function matchesFilter(idea, filter) {
   const l = lane(idea);
@@ -191,8 +192,8 @@ export function listIdeas(db, { filter = 'open', project = null, query = '', lim
     });
   }
   ideas.sort((a, b) => {
-    const la = LANE_ORDER.indexOf(lane(a));
-    const lb = LANE_ORDER.indexOf(lane(b));
+    const la = LANES.indexOf(lane(a));
+    const lb = LANES.indexOf(lane(b));
     if (la !== lb) return la - lb;
     if (['done', 'dropped', 'inbox'].includes(lane(a))) return b.id - a.id; // newest first
     return priority(b) - priority(a) || a.id - b.id;

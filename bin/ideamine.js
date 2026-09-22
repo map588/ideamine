@@ -14,6 +14,7 @@ const HELP = `ideamine: an idea inbox for Claude Code
   ideamine model <id> <haiku|sonnet|opus|fable>   override the recommended model
   ideamine next [--here]          the idea to build next
   ideamine go [id] [--print]      open Claude Code on the idea's recommended model, in its project
+  ideamine go [id] --pipeline     the same, with the agent pipeline (/pipeline) as the request
   ideamine sort [--model sonnet] [--limit 20] [--dry-run]
                                   triage the inbox with one headless \`claude -p\` call
   ideamine watch [off]            the watcher: Haiku triages new ideas and pairs them with projects
@@ -21,6 +22,8 @@ const HELP = `ideamine: an idea inbox for Claude Code
   ideamine find <words...>        search by meaning (nomic-embed-text), in every lane
   ideamine groups [lane|-a]       ideas grouped by meaning
   ideamine embed                  embed new ideas, and show how the vectors and thresholds fit
+  ideamine serve [--port 7411] [--open]
+                                  the dashboard on this machine, with live data and actions
   ideamine publish [url|off] [--dir <folder>]
                                   upload the dashboard (index.html, data.json) now; a url also turns
                                   on the upload after each change; --dir writes the files to a folder
@@ -38,7 +41,7 @@ function parseArgs(argv) {
     if (a.startsWith('--')) {
       const [key, inline] = a.slice(2).split('=', 2);
       if (inline !== undefined) flags[key] = inline;
-      else if (argv[i + 1] !== undefined && !argv[i + 1].startsWith('--') && ['model', 'limit', 'budget', 'query', 'dir'].includes(key)) flags[key] = argv[++i];
+      else if (argv[i + 1] !== undefined && !argv[i + 1].startsWith('--') && ['model', 'limit', 'budget', 'query', 'dir', 'port'].includes(key)) flags[key] = argv[++i];
       else flags[key] = true;
     } else words.push(a);
   }
@@ -128,19 +131,19 @@ async function main() {
       break;
     }
     case 'go': {
-      const { buildPrompt, launchSession } = await import('../src/claude.js');
+      const { buildPrompt, launchSession, pipelinePrompt } = await import('../src/claude.js');
       const db = store.load();
       const idea = words[0] ? store.findIdea(db, words[0]) : store.pickNext(db, { project: cwd });
       if (!idea) fail(words[0] ? `no idea #${words[0]}` : 'nothing is ready to build; run: ideamine sort');
       const model = idea.triage?.model || 'sonnet';
       const dir = idea.project && fs.existsSync(idea.project) ? idea.project : cwd;
-      const prompt = buildPrompt(idea);
+      const prompt = flags.pipeline ? pipelinePrompt(idea, { dir }) : buildPrompt(idea);
       if (flags.print) {
         console.log(`directory: ${dir}\nmodel:     ${model}\n\n${prompt}`);
         break;
       }
-      store.updateIdea(idea.id, { status: 'doing' });
-      console.log(`Opening Claude Code (${model}) in ${dir} for #${idea.id}…`);
+      store.updateIdea(idea.id, { status: 'doing', note: flags.pipeline ? 'pipeline: started' : undefined });
+      console.log(`Opening Claude Code (${model}) in ${dir} for #${idea.id}${flags.pipeline ? ', through the agent pipeline' : ''}…`);
       process.exitCode = launchSession({ model, prompt, cwd: dir });
       break;
     }
@@ -195,6 +198,18 @@ async function main() {
     case 'embed': {
       const embed = await import('../src/embed.js');
       console.log(await embed.status(store.load()));
+      break;
+    }
+    case 'serve': {
+      const serve = await import('../src/serve.js');
+      if (words[0] === 'off') {
+        console.log(serve.stop());
+        break;
+      }
+      const { url, close } = await serve.listen({ port: Number(flags.port) || serve.DEFAULT_PORT });
+      console.log(`ideamine web: ${url}  (Ctrl-C stops it)`);
+      if (flags.open) serve.openBrowser(url);
+      for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, () => close().then(() => process.exit(0)));
       break;
     }
     case 'publish': {

@@ -150,6 +150,18 @@ export function buildPrompt(idea) {
   return lines.join('\n');
 }
 
+/**
+ * The request for the agent pipeline (the `pipeline` skill of the agent-pipeline plugin): the idea,
+ * its project, and its id, so the pipeline can record its progress on the idea.
+ */
+export function pipelinePrompt(idea, { dir }) {
+  const t = idea.triage;
+  const lines = [`/pipeline Build idea #${idea.id} from my ideamine archive: ${idea.title}`];
+  if (t?.brief) lines.push(t.brief);
+  lines.push(`My original note: ${idea.text}`, `Project: ${dir}`, `ideamine idea id: ${idea.id}`);
+  return lines.join('\n');
+}
+
 /** Start an interactive Claude Code session on the recommended model. */
 export function launchSession({ model, prompt, cwd }) {
   const [bin, argv] = command(['--model', model, prompt]);

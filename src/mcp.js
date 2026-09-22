@@ -166,9 +166,11 @@ const PROMPTS = [
   { name: 'ideas-done', description: 'Mark an idea done', arguments: [{ name: 'id', required: true }, { name: 'note', required: false }] },
   { name: 'ideas-reopen', description: 'Put an idea back in the queue', arguments: [{ name: 'id', required: true }] },
   { name: 'ideas-go', description: 'Build the next idea on its recommended model', arguments: [{ name: 'id', required: false }] },
+  { name: 'ideas-pipeline', description: 'Build the next idea through the agent pipeline', arguments: [{ name: 'id', required: false }] },
   { name: 'ideas-all', description: 'Do every idea that fits this chat', arguments: [] },
   { name: 'ideas-sort', description: 'Triage the inbox now and show the queue', arguments: [] },
   { name: 'ideas-watch', description: 'Turn the background watcher on or off', arguments: [{ name: 'off', required: false }] },
+  { name: 'ideas-web', description: 'Open the dashboard in your browser, served on this machine', arguments: [{ name: 'off', required: false }] },
 ];
 
 function skillBody(name, args) {

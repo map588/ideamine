@@ -45,9 +45,11 @@ Marketplaces you add yourself do not auto-update. To upgrade, run `claude plugin
 | `/ideas-find sync subtitles` | Search every lane by meaning, not only by the words. See [Search by meaning](#search-by-meaning-and-groups). | **No** |
 | `/ideas-groups` · `done` · `-a` | Show the ideas grouped by meaning | **No** |
 | `/ideas-go [12]` | Build the idea that fits this chat, else the first in the queue, or #12, on its recommended model. New ideas are triaged first. | Yes, this is the build |
+| `/ideas-pipeline [12]` | The same, through the agent pipeline of the [agent-pipeline](#with-the-agent-pipeline) plugin: research, storyboard, plan, engineers in parallel, test, validate. For big ideas. | Yes, this is the build |
 | `/ideas-all` | Claude reads every idea, takes the ones that fit this chat out of the queue, and does them. The others stay in the queue. | Yes, this is the build |
 | `/ideas-sort` | Triage the inbox now and show the queue. You do not have to: `/ideas-go` triages when it must. | Yes, briefly |
 | `/ideas-watch [off]` | Turn on the watcher: Haiku triages each new idea and pairs it with its project, in the background. With no argument, it also shows what the watcher did. | Haiku, only for new ideas |
+| `/ideas-web [off]` | Open the dashboard in your browser, served on this machine with live data. See [Dashboard](#dashboard). | **No** |
 | `/ideas <question>` | Ask about your ideas, e.g. "which ones fit in an hour?" | Yes, briefly |
 
 Each command has its own name, so the slash menu shows all of them when you type `/idea`. The plugin menu also shows them as `/ideamine:ideas-go` and so on. Both forms work.
@@ -104,7 +106,34 @@ Claude can search by meaning with `idea_list` and `semantic: true`, and group wi
 
 ## Dashboard
 
-`ideamine publish` makes a web page of your ideas: a board with a ticket for each idea, a timeline (a Gantt chart) of how long each idea waited and how long the work took, the groups, and search by meaning. A ticket opens a preview with the brief, the notes, and the related ideas. The page is one static file, `index.html`, and it reads a snapshot, `data.json`. It loads nothing from the internet.
+```
+> /ideas-web
+  ideamine web: http://127.0.0.1:7411/ (starting)
+```
+
+The dashboard is a web page of your ideas, with seven views:
+
+| View | What it shows |
+|---|---|
+| Board | A column for each lane (doing, do, maybe, inbox, done), a ticket for each idea, in queue order |
+| Timeline | A Gantt chart: how long each idea waited in the inbox, waited in the queue, and was in work |
+| Table | Every idea in one sortable table: lane, model, size, impact, project, tags, age |
+| Projects | A row for each project and a column for each lane, so you see where the work piles up |
+| Flow | Tiles (open, done in 7 days, median lead and cycle time, model mix) and a cumulative flow chart of the lanes over time |
+| Matrix | Impact against size. Quick wins in the top left, ideas to avoid in the bottom right |
+| Groups | The ideas grouped by meaning |
+
+The search box finds ideas by meaning in every view. A ticket opens a drawer with the brief, the notes, and the related ideas. The page is one static file, `index.html`, and it reads a snapshot, `data.json`. It loads nothing from the internet, and it shows skip and dropped ideas only when you tick "Show parked".
+
+### On your machine
+
+`/ideas-web` starts a small server on `127.0.0.1` and opens the page in your browser. The hook answers, so it costs no tokens. `/ideas-web off` stops the server. In a terminal, `ideamine serve [--port 7411] [--open]` runs the same server in the foreground.
+
+Served this way, the page has live data and can change ideas, so it stands in for the local slash commands: the drawer of a ticket has buttons to start, finish, drop, reopen, or delete the idea, a box for a note, and a menu for the model. The page asks the server for new data every 5 seconds, and the server builds `data.json` again only when the archive changed. Only the page can change ideas: the server answers only on `localhost`, and it refuses a request that another web site sends from your browser (a foreign `Host`, a form body, or a cross-site fetch). `~/.ideamine/serve.json` records the running server.
+
+### On a server of your own
+
+`ideamine publish` uploads the same page and a snapshot to a web server. The published page is read-only.
 
 ```bash
 ideamine publish http://10.66.0.1/
@@ -129,7 +158,18 @@ server {
 }
 ```
 
-`data.json` has `version` (1), `generated`, `embed` (model, query prefix, thresholds, and whether vectors are present), `counts`, `ideas`, and `groups`. Each idea has its ticket key (`IDEA-12`), lane, rank in the queue, triage, times (`created`, `triaged`, `started`, `closed`), timeline `phases`, notes, `group`, `related` ideas with their similarity, and `vec`, the vector as base64 of little-endian float32.
+`data.json` has `version` (1), `generated`, `embed` (model, query prefix, thresholds, and whether vectors are present), `counts`, `ideas`, `groups`, `flow` (the times and the count of each lane at each time, for the cumulative flow chart), and `stats` (the tiles of the Flow view). When `ideamine serve` serves it, it also has `api: true`, which turns on the actions, and `note`, which says when search by meaning is not available. Each idea has its ticket key (`IDEA-12`), lane, rank in the queue, triage, times (`created`, `triaged`, `started`, `closed`), timeline `phases`, notes, `group`, `related` ideas with their similarity, and `vec`, the vector as base64 of little-endian float32.
+
+## With the agent pipeline
+
+```
+> /ideas-pipeline 12
+  #12 sync subtitles with the audiobook → /work/app, through the agent pipeline
+```
+
+`/ideas-go` gives an idea to one subagent. For a big idea, `/ideas-pipeline` gives it to the [agent-pipeline](https://github.com/map588/agents) plugin instead: a researcher maps the project, a story-writer turns the idea into stories, a project manager plans tasks, engineers build them in parallel worktrees, an integrator merges, and a tester and a validator check the result. The pipeline asks you to approve the stories and the plan. `/ideas-go` points to `/ideas-pipeline` when an idea is size L or XL.
+
+The idea is the record of the run. The pipeline adds a note to the idea after each phase (`pipeline: research done`, `pipeline: plan approved`, `pipeline: wave 1 integrated`, ...), marks the idea done when its tests and validation pass, and leaves it in `doing` with a note when it stops at its iteration cap. The dashboard shows the latest note on the ticket in the Doing column, and the drawer shows them all. In a terminal, `ideamine go 12 --pipeline` opens Claude Code with the same request.
 
 ## Model routing
 
@@ -168,12 +208,14 @@ ideamine rm 12                                    # delete for good
 ideamine done 12 "shipped in v1.4"                # also: drop, start, reopen, note
 ideamine next                                     # what to build next
 ideamine go 12                                    # opens Claude Code on the right model, in the idea's project
+ideamine go 12 --pipeline                         # the same, with the agent pipeline as the request
 ideamine sort                                     # headless triage (see above)
 ideamine watch [off]                              # the watcher (see above)
 ideamine find sync subtitles                      # search by meaning
 ideamine groups [-a]                              # ideas grouped by meaning
 ideamine embed                                    # embed new ideas, show the similarity numbers
-ideamine publish [url|off] [--dir folder]         # the dashboard (see above)
+ideamine serve [--port 7411] [--open]             # the dashboard on this machine, with live data and actions
+ideamine publish [url|off] [--dir folder]         # the dashboard on a server of your own
 ideamine config [key [value]]                     # show or change a setting
 ideamine export IDEAS.md                          # Markdown copy of everything
 ```
@@ -224,10 +266,11 @@ Tools: `idea_add`, `idea_list`, `idea_triage`, `idea_update`, `idea_next`, `idea
 watcher on: any prompt ──► hook ──► background pass ──► claude -p (Haiku) ──► verdicts + a project for each idea
 
 /ideas-find, /ideas-groups ──► hook ──► embedding server (new ideas only) ──► cosine similarity ──► answer
+/ideas-web       ──► hook ──► ideamine serve on 127.0.0.1 ──► browser: live data.json every 5 s, actions via api/ideas
 publish on: any prompt after a change ──► hook ──► background publish ──► PUT index.html + data.json
 ```
 
-The plugin contains a Node MCP server with no dependencies, thirteen skills (the slash commands), and one hook. The hook answers `/idea`, `/ideas`, and the local `/ideas-*` commands before any API call, and it lets every other prompt through. The hook runs directly, not through a shell, and takes about 130 ms per prompt on Windows. The skills are user-only, so their descriptions add no tokens to your sessions. If the archive cannot be read, the hook lets the prompt through, so the `/idea` skill can still save it with the MCP tool. Your text is never dropped.
+The plugin contains a Node MCP server with no dependencies, fifteen skills (the slash commands), and one hook. The hook answers `/idea`, `/ideas`, and the local `/ideas-*` commands before any API call, and it lets every other prompt through. The hook runs directly, not through a shell, and takes about 130 ms per prompt on Windows. The skills are user-only, so their descriptions add no tokens to your sessions. If the archive cannot be read, the hook lets the prompt through, so the `/idea` skill can still save it with the MCP tool. Your text is never dropped.
 
 ## Development
 
@@ -239,7 +282,7 @@ npm install
 npm test
 ```
 
-The tests use `node:test`, and [fast-check](https://fast-check.dev) for the property tests. fast-check is a development dependency only: the plugin itself installs nothing. The tests cover the store, including concurrent writers from several processes, the hook, the MCP protocol, headless triage with pairing, the watcher, embeddings and groups, and the dashboard upload. Triage runs against a stand-in `claude`, and embeddings and uploads run against a stand-in server, so the tests spend no tokens and need no network.
+The tests use `node:test`, and [fast-check](https://fast-check.dev) for the property tests. fast-check is a development dependency only: the plugin itself installs nothing. The tests cover the store, including concurrent writers from several processes, the hook, the MCP protocol, headless triage with pairing, the watcher, embeddings and groups, the dashboard upload, the local dashboard server, and the flow series. Triage runs against a stand-in `claude`, and embeddings and uploads run against a stand-in server, so the tests spend no tokens and need no network.
 
 ## License
 

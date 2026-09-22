@@ -1,5 +1,5 @@
 // UserPromptSubmit hook: answers /idea, /ideas, and the local /ideas-* commands (ls, cat, rm, done,
-// reopen, find, groups, watch) and blocks the prompt, so the model is never called. That makes
+// reopen, find, groups, watch, web) and blocks the prompt, so the model is never called. That makes
 // capture free, instant, and possible even when the session is out of usage. Every other prompt
 // passes through untouched, including /ideas-go, /ideas-all, /ideas-sort, and questions, which their
 // skills answer. After each prompt, the hook lets the watcher and the dashboard catch up.
@@ -7,6 +7,7 @@
 import * as embed from './embed.js';
 import * as publish from './publish.js';
 import { renderAdded, renderBoard, renderFound, renderGroups, renderIdea } from './render.js';
+import * as serve from './serve.js';
 import { addIdeas, FILTERS, findIdea, lane, listIdeas, load, removeIdeas, updateIdea } from './store.js';
 import { clip, splitIdeas } from './text.js';
 import * as watch from './watch.js';
@@ -27,9 +28,12 @@ const USAGE = `Usage: /idea <text>                add an idea (a bulleted list a
        /ideas-groups [lane|-a]      ideas grouped by meaning
 These call the model:
        /ideas-go [N]                build the next idea, or #N, on its model. New ideas are triaged first.
+       /ideas-pipeline [N]          the same, through the agent pipeline (agent-pipeline plugin), for big ideas
        /ideas-all                   do every idea that fits this chat. The others stay in the queue.
        /ideas-sort                  triage the inbox now and show the queue
-       /ideas-watch [off]           Haiku triages new ideas and pairs them with projects, in the background`;
+       /ideas-watch [off]           Haiku triages new ideas and pairs them with projects, in the background
+Local, in your browser:
+       /ideas-web [off]             the dashboard on this machine: board, timeline, table, projects, flow, matrix, groups`;
 
 const noIdea = (ids) => `No idea ${ids.map((id) => `#${String(id).replace(/^#/, '')}`).join(', ')}.`;
 
@@ -65,6 +69,14 @@ export async function handlePrompt(prompt, { cwd = process.cwd(), session = null
     else if (/^off$/i.test(arg)) watch.turnOff();
     else return null;
     return watch.status(); // runHook starts the first pass after this
+  }
+
+  if (command === 'ideas-web') {
+    if (/^off$/i.test(arg)) return serve.stop();
+    if (arg) return null;
+    const message = serve.ensureRunning();
+    serve.openBrowser(serve.running()?.url || `http://127.0.0.1:${serve.DEFAULT_PORT}/`);
+    return message;
   }
 
   const words = arg.split(/\s+/).filter(Boolean);

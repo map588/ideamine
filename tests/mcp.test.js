@@ -31,6 +31,7 @@ before(async () => {
     IDEAMINE_CLAUDE_BIN: fileURLToPath(new URL('./fixtures/fake-claude.js', import.meta.url)),
   };
   env.CLAUDE_CONFIG_DIR = env.IDEAMINE_HOME; // no .claude.json: the projects of this machine stay out of the tests
+  env.CLAUDE_PROJECT_DIR = project; // the server pairs ideas with this folder, also when a Claude Code hook runs the tests
   server = spawn(process.execPath, [BIN, 'mcp'], { cwd: project, env, stdio: ['pipe', 'pipe', 'inherit'] });
   readline.createInterface({ input: server.stdout }).on('line', (line) => {
     const msg = JSON.parse(line); // stdout must carry nothing but JSON-RPC
@@ -109,7 +110,7 @@ test('tool errors come back as isError results, not protocol errors', async () =
 test('prompts mirror the skills', async () => {
   const list = await request('prompts/list');
   const names = list.result.prompts.map((p) => p.name);
-  assert.deepEqual(names, ['idea', 'ideas', 'ideas-ls', 'ideas-cat', 'ideas-rm', 'ideas-find', 'ideas-groups', 'ideas-done', 'ideas-reopen', 'ideas-go', 'ideas-all', 'ideas-sort', 'ideas-watch']);
+  assert.deepEqual(names, ['idea', 'ideas', 'ideas-ls', 'ideas-cat', 'ideas-rm', 'ideas-find', 'ideas-groups', 'ideas-done', 'ideas-reopen', 'ideas-go', 'ideas-pipeline', 'ideas-all', 'ideas-sort', 'ideas-watch', 'ideas-web']);
   // One prompt for each skill, so that other MCP clients get the same commands as the plugin.
   assert.deepEqual([...names].sort(), fs.readdirSync(new URL('../skills', import.meta.url)).sort());
   const go = await request('prompts/get', { name: 'ideas-go', arguments: { id: '12' } });

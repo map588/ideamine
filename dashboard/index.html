@@ -31,6 +31,7 @@
   --phase-inbox: #86b6ef;
   --phase-queued: #3987e5;
   --phase-doing: #184f95;
+  --flow-inbox: #7a6fc9;
   --now-line: #0b0b0b;
 }
 @media (prefers-color-scheme: dark) {
@@ -56,6 +57,7 @@
     --phase-inbox: #184f95;
     --phase-queued: #3987e5;
     --phase-doing: #86b6ef;
+    --flow-inbox: #8f7fe0;
     --now-line: #ffffff;
   }
 }
@@ -115,6 +117,7 @@ main { padding: 12px; }
 .card-meta { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
 .card-project { font-size: 11px; color: var(--text-muted); }
 .card-score { margin-left: auto; font-size: 11px; font-weight: 600; color: var(--accent); }
+.card-note { font-size: 11px; color: var(--text-dim); margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* chips (lane / model / size / impact / tag) */
 .chip { display: inline-flex; align-items: center; border: 1px solid var(--border-strong); border-radius: 999px; padding: 1px 8px; font-size: 11px; color: var(--text-dim); background: var(--surface-2); white-space: nowrap; }
@@ -163,6 +166,73 @@ main { padding: 12px; }
 .tl-end-mark { font-size: 13px; font-weight: 700; dominant-baseline: middle; }
 .tl-end-done { fill: var(--lane-done); }
 .tl-end-dropped { fill: var(--lane-dropped); }
+
+/* table view */
+.table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; }
+.idea-table { border-collapse: collapse; width: 100%; font-size: 13px; }
+.idea-table th, .idea-table td { padding: 6px 10px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; white-space: nowrap; }
+.idea-table th { position: sticky; top: 0; background: var(--surface-2); font-weight: 600; font-size: 12px; }
+.idea-table th button { background: none; border: none; padding: 0; cursor: pointer; font: inherit; font-weight: 600; color: var(--text-dim); }
+.idea-table th[aria-sort] button { color: var(--text); }
+.idea-table td.col-title { white-space: normal; min-width: 240px; }
+.idea-table tbody tr { cursor: pointer; }
+.idea-table tbody tr:hover, .idea-table tbody tr:focus-visible { background: var(--surface-2); outline: none; }
+.sort-mark { font-size: 10px; margin-left: 3px; }
+
+/* projects view */
+.projects-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; }
+.projects { display: grid; grid-auto-rows: minmax(48px, auto); width: max-content; }
+.projects > div { border-bottom: 1px solid var(--border); border-right: 1px solid var(--border); padding: 6px; min-width: 200px; }
+.projects .proj-head { position: sticky; top: 0; z-index: 2; background: var(--surface-2); font-weight: 600; display: flex; align-items: center; gap: 6px; }
+.projects .proj-name { position: sticky; left: 0; z-index: 1; background: var(--surface); min-width: 180px; max-width: 180px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+.projects .proj-name.proj-head { z-index: 3; }
+.projects .proj-open { display: block; color: var(--text-muted); font-weight: 400; font-size: 12px; }
+.projects .proj-cell { display: flex; flex-direction: column; gap: 6px; max-width: 260px; }
+
+/* flow view: tiles, then the cumulative flow chart */
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-bottom: 14px; }
+.tile { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+.tile-label { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); }
+.tile-value { font-size: 22px; font-weight: 700; line-height: 1.2; margin-top: 2px; }
+.tile-note { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+.mix-bar { display: flex; height: 10px; border-radius: 3px; overflow: hidden; gap: 2px; margin-top: 8px; background: var(--surface-2); }
+.mix-seg { background: var(--chip-color); }
+.mix-legend { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; font-size: 12px; color: var(--text-dim); }
+.mix-legend span::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 2px; background: var(--chip-color); margin-right: 4px; }
+.flow-chart { width: 100%; height: auto; display: block; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
+.flow-area { stroke: var(--surface); stroke-width: 2; stroke-linejoin: round; }
+.flow-grid { stroke: var(--border); stroke-width: 1; }
+.flow-tick { fill: var(--text-muted); font-size: 10px; }
+.flow-cross { stroke: var(--text); stroke-width: 1; stroke-dasharray: 3 3; pointer-events: none; }
+.flow-hit { fill: transparent; cursor: crosshair; }
+.tooltip-row { display: flex; justify-content: space-between; gap: 12px; }
+.tooltip-swatch { display: inline-block; width: 8px; height: 8px; border-radius: 2px; background: var(--chip-color); margin-right: 5px; }
+
+/* matrix view */
+.matrix-wrap { overflow-x: auto; }
+.matrix { display: grid; grid-template-columns: 64px repeat(5, minmax(150px, 1fr)); gap: 2px; min-width: 820px; }
+.matrix > div { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 6px; min-height: 56px; position: relative; }
+.matrix .mx-head { background: var(--surface-2); font-weight: 600; text-align: center; min-height: 0; display: flex; align-items: center; justify-content: center; }
+.matrix .mx-count { position: absolute; top: 4px; right: 6px; font-size: 11px; color: var(--text-muted); }
+.matrix .mx-corner { font-size: 11px; color: var(--text-muted); text-align: right; }
+.matrix .mx-note { position: absolute; bottom: 4px; right: 6px; font-size: 10px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); }
+.matrix .mx-win { border-color: var(--lane-do); }
+.matrix .mx-avoid { border-color: var(--lane-dropped); }
+.matrix-chip { display: flex; gap: 6px; align-items: baseline; width: 100%; text-align: left; background: var(--surface-2); border: 1px solid var(--border); border-radius: 4px; padding: 3px 6px; margin-bottom: 4px; cursor: pointer; font-size: 12px; }
+.matrix-chip:hover { border-color: var(--border-strong); }
+.matrix-chip .card-key { flex: none; }
+.matrix-chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.matrix-rest { color: var(--text-muted); font-size: 12px; margin-top: 8px; }
+
+/* actions in the drawer (only when the page is served by ideamine serve) */
+.action-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: flex-start; margin-bottom: 8px; }
+.action-btn { padding: 5px 10px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--surface-2); cursor: pointer; font-size: 13px; }
+.action-btn:hover { border-color: var(--accent); }
+.action-btn:disabled { opacity: .5; cursor: default; }
+.action-danger { color: var(--lane-dropped); }
+.action-select { padding: 5px 8px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--surface-2); color: inherit; font: inherit; font-size: 13px; }
+.action-note { flex: 1 1 200px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text); font: inherit; font-size: 13px; resize: vertical; }
+.action-error { color: var(--lane-dropped); font-size: 12px; }
 
 /* detail drawer */
 .drawer-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, .4); z-index: 20; }
@@ -216,6 +286,10 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
     <nav class="tabs" id="tabs" role="tablist" aria-label="Views">
       <button type="button" role="tab" data-view="board" aria-controls="main">Board</button>
       <button type="button" role="tab" data-view="timeline" aria-controls="main">Timeline</button>
+      <button type="button" role="tab" data-view="table" aria-controls="main">Table</button>
+      <button type="button" role="tab" data-view="projects" aria-controls="main">Projects</button>
+      <button type="button" role="tab" data-view="flow" aria-controls="main">Flow</button>
+      <button type="button" role="tab" data-view="matrix" aria-controls="main">Matrix</button>
       <button type="button" role="tab" data-view="groups" aria-controls="main">Groups</button>
     </nav>
     <label class="parked-toggle">
@@ -238,8 +312,9 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
 <script>
 'use strict';
 
-/* ideamine dashboard. One file, no build step, no external calls
-   besides data.json and v1/embeddings on the same origin. */
+/* ideamine dashboard. One file, no build step, no external calls besides data.json,
+   v1/embeddings, and api/ideas on the same origin. `ideamine serve` gives the page live data
+   and the actions (data.api); a published snapshot is read-only. */
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const MIN = 60000, HOUR = 3600000, DAY = 86400000;
@@ -252,6 +327,12 @@ const LANE_LABELS = { doing: 'Doing', do: 'Do', maybe: 'Maybe', inbox: 'Inbox', 
 const PHASE_LABELS = { inbox: 'Inbox', queued: 'Queued', doing: 'Doing' };
 const SEARCH_DEBOUNCE_MS = 300;
 const EMBED_TIMEOUT_MS = 4000;
+const POLL_MS = 5000;
+const VIEWS = ['board', 'timeline', 'table', 'projects', 'flow', 'matrix', 'groups'];
+const OPEN_LANES = ['inbox', 'do', 'maybe', 'doing'];
+const FLOW_STACK = ['dropped', 'skip', 'done', 'doing', 'do', 'maybe', 'inbox']; // bottom to top
+const MODELS = ['haiku', 'sonnet', 'opus', 'fable'];
+const SIZE_ORDER = ['xs', 's', 'm', 'l', 'xl'];
 
 const state = {
   data: null,
@@ -262,6 +343,10 @@ const state = {
   openKey: null,
   query: '',
   searchResult: null,
+  etag: null,
+  tableSort: { key: 'rank', dir: 1 },
+  busy: false,
+  actionError: '',
 };
 
 let searchTimer = null;
@@ -338,6 +423,20 @@ function fmtRelative(iso) {
   }
 }
 
+function fmtDuration(ms) {
+  if (ms == null) return null;
+  if (ms < HOUR) return Math.max(1, Math.round(ms / MIN)) + ' min';
+  if (ms < DAY) return Math.round(ms / HOUR) + ' h';
+  const days = ms / DAY;
+  return (days < 10 ? days.toFixed(1) : Math.round(days)) + ' d';
+}
+
+function laneColor(lane) { return lane === 'inbox' ? 'var(--flow-inbox)' : 'var(--lane-' + lane + ')'; }
+
+function visibleIdeas() {
+  return state.data.ideas.filter((i) => state.showParked || !PARKED_LANES.includes(i.lane));
+}
+
 function formatTick(t, step) {
   const d = new Date(t);
   if (step < HOUR) return d.toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit' });
@@ -398,6 +497,8 @@ function ideaCard(idea, opts) {
   const top = el('div', { class: 'card-top' }, el('code', { class: 'card-key' }, idea.key), el('span', { class: 'card-chips' }, chips));
   if (opts.scoreLabel) top.append(el('span', { class: 'card-score' }, opts.scoreLabel));
 
+  // Work in progress shows its latest note, for example the phase of the agent pipeline.
+  const lastNote = idea.lane === 'doing' && idea.notes && idea.notes.length ? idea.notes[idea.notes.length - 1] : null;
   const meta = [];
   if (idea.project) meta.push(el('span', { class: 'card-project' }, idea.project));
   for (const t of idea.tags || []) meta.push(el('span', { class: 'chip chip-tag' }, t));
@@ -405,6 +506,7 @@ function ideaCard(idea, opts) {
   return el('button', { class: 'card' + (opts.compact ? ' card-compact' : ''), type: 'button', onclick: () => openTicket(idea.key) },
     top,
     el('div', { class: 'card-title' }, idea.title),
+    lastNote ? el('div', { class: 'card-note', title: lastNote.text }, lastNote.text) : null,
     meta.length ? el('div', { class: 'card-meta' }, meta) : null);
 }
 
@@ -635,6 +737,260 @@ function renderTimeline() {
   $main.append(renderTimelineLegend(), scroll);
 }
 
+/* ---- table view ---- */
+
+const COLUMNS = [
+  { key: 'rank', label: '#', value: (i) => i.rank, cell: (i) => el('code', { class: 'card-key' }, i.key) },
+  { key: 'title', label: 'Title', value: (i) => i.title.toLowerCase(), cell: (i) => i.title, class: 'col-title' },
+  { key: 'lane', label: 'Lane', value: (i) => ALL_LANES.indexOf(i.lane), cell: (i) => el('span', { class: 'chip chip-lane', style: '--chip-color:var(--lane-' + i.lane + ')' }, LANE_LABELS[i.lane] || i.lane) },
+  { key: 'model', label: 'Model', value: (i) => (i.model ? MODELS.indexOf(i.model) : 9), cell: (i) => i.model || '' },
+  { key: 'size', label: 'Size', value: (i) => (i.size ? SIZE_ORDER.indexOf(i.size) : 9), cell: (i) => (i.size ? i.size.toUpperCase() : '') },
+  { key: 'impact', label: 'Impact', value: (i) => (i.impact == null ? -1 : i.impact), cell: (i) => (i.impact == null ? '' : '▲' + i.impact) },
+  { key: 'project', label: 'Project', value: (i) => i.project || '', cell: (i) => i.project || '' },
+  { key: 'tags', label: 'Tags', value: (i) => (i.tags || []).join(' '), cell: (i) => (i.tags || []).map((t) => el('span', { class: 'chip chip-tag' }, t)) },
+  { key: 'created', label: 'Created', value: (i) => i.created, cell: (i) => el('span', { title: fmtDate(i.created) || '' }, fmtRelative(i.created)) },
+  { key: 'updated', label: 'Updated', value: (i) => i.updated || '', cell: (i) => (i.updated ? el('span', { title: fmtDate(i.updated) || '' }, fmtRelative(i.updated)) : '') },
+];
+
+function sortedForTable(ideas) {
+  const col = COLUMNS.find((c) => c.key === state.tableSort.key) || COLUMNS[0];
+  const dir = state.tableSort.dir;
+  return ideas.slice().sort((a, b) => {
+    const va = col.value(a), vb = col.value(b);
+    const cmp = va < vb ? -1 : va > vb ? 1 : a.rank - b.rank;
+    return cmp * dir;
+  });
+}
+
+function renderTable() {
+  $main.textContent = '';
+  const ideas = sortedForTable(visibleIdeas());
+  if (!ideas.length) { $main.append(el('p', { class: 'empty-note' }, 'No ideas to show.')); return; }
+  const head = el('tr', {}, COLUMNS.map((c) => {
+    const active = state.tableSort.key === c.key;
+    const th = el('th', { scope: 'col', 'aria-sort': active ? (state.tableSort.dir > 0 ? 'ascending' : 'descending') : null });
+    th.append(el('button', { type: 'button', onclick: () => {
+      state.tableSort = active ? { key: c.key, dir: -state.tableSort.dir } : { key: c.key, dir: 1 };
+      render();
+    } }, c.label, active ? el('span', { class: 'sort-mark' }, state.tableSort.dir > 0 ? '▲' : '▼') : null));
+    return th;
+  }));
+  const body = el('tbody', {}, ideas.map((idea) => el('tr', { tabindex: '0', onclick: () => openTicket(idea.key), onkeydown: (e) => { if (e.key === 'Enter') openTicket(idea.key); } },
+    COLUMNS.map((c) => el('td', { class: c.class || null }, c.cell(idea))))));
+  $main.append(el('div', { class: 'table-wrap' }, el('table', { class: 'idea-table' }, el('thead', {}, head), body)));
+}
+
+/* ---- projects view: one row per project, one column per lane ---- */
+
+function renderProjects() {
+  $main.textContent = '';
+  const lanes = state.showParked ? BOARD_LANES.concat(PARKED_LANES) : BOARD_LANES;
+  const rows = new Map();
+  for (const idea of visibleIdeas()) {
+    const key = idea.project || '';
+    if (!rows.has(key)) rows.set(key, []);
+    rows.get(key).push(idea);
+  }
+  if (!rows.size) { $main.append(el('p', { class: 'empty-note' }, 'No ideas to show.')); return; }
+  const openCount = (ideas) => ideas.filter((i) => OPEN_LANES.includes(i.lane)).length;
+  const names = [...rows.keys()].sort((a, b) => (a === '') - (b === '') || openCount(rows.get(b)) - openCount(rows.get(a)) || a.localeCompare(b));
+  const grid = el('div', { class: 'projects', style: 'grid-template-columns: 180px repeat(' + lanes.length + ', minmax(200px, 260px))', role: 'table' });
+  grid.append(el('div', { class: 'proj-name proj-head', role: 'columnheader' }, 'Project'));
+  for (const lane of lanes) {
+    grid.append(el('div', { class: 'proj-head', role: 'columnheader' }, el('span', { class: 'column-dot', style: '--chip-color:var(--lane-' + lane + ')' }), LANE_LABELS[lane]));
+  }
+  for (const name of names) {
+    const ideas = rows.get(name);
+    grid.append(el('div', { class: 'proj-name', role: 'rowheader', title: name || 'no project' }, name || el('span', { class: 'text-muted' }, 'no project'), el('span', { class: 'proj-open' }, openCount(ideas) + ' open')));
+    for (const lane of lanes) {
+      const cell = ideas.filter((i) => i.lane === lane).sort((a, b) => a.rank - b.rank);
+      grid.append(el('div', { class: 'proj-cell', role: 'cell' }, cell.map((i) => ideaCard(i, { compact: true }))));
+    }
+  }
+  $main.append(el('div', { class: 'projects-wrap' }, grid));
+}
+
+/* ---- flow view: tiles, then the cumulative flow chart ---- */
+
+function tile(label, value, note) {
+  return el('div', { class: 'tile' }, el('div', { class: 'tile-label' }, label), el('div', { class: 'tile-value' }, value), note ? el('div', { class: 'tile-note' }, note) : null);
+}
+
+function modelMixTile(models) {
+  const total = MODELS.reduce((sum, m) => sum + (models[m] || 0), 0);
+  const node = el('div', { class: 'tile' }, el('div', { class: 'tile-label' }, 'Model mix, open ideas'), el('div', { class: 'tile-value' }, String(total)));
+  if (!total) { node.append(el('div', { class: 'tile-note' }, 'No triaged open ideas yet.')); return node; }
+  // One hue, a darker step for each more costly model; the legend names each one.
+  const steps = ['var(--phase-inbox)', 'var(--phase-queued)', 'var(--phase-doing)', 'var(--text)'];
+  const bar = el('div', { class: 'mix-bar', 'aria-hidden': 'true' });
+  const legend = el('div', { class: 'mix-legend' });
+  MODELS.forEach((m, n) => {
+    if (!models[m]) return;
+    bar.append(el('span', { class: 'mix-seg', style: '--chip-color:' + steps[n] + '; flex:' + models[m] }));
+    legend.append(el('span', { style: '--chip-color:' + steps[n] }, m + ' ' + models[m]));
+  });
+  node.append(bar, legend);
+  return node;
+}
+
+function renderTiles(stats) {
+  return el('div', { class: 'tiles' },
+    tile('Open', String(stats.open), stats.oldest_open_ms != null ? 'oldest waits ' + fmtDuration(stats.oldest_open_ms) : null),
+    tile('Done, last 7 days', String(stats.done_7d), stats.dropped_7d ? stats.dropped_7d + ' dropped' : null),
+    tile('Median lead time', fmtDuration(stats.lead_median_ms) || '—', 'created → done'),
+    tile('Median cycle time', fmtDuration(stats.cycle_median_ms) || '—', stats.cycle_median_ms == null ? 'no recorded starts yet' : 'started → done'),
+    modelMixTile(stats.models || {}));
+}
+
+function niceStep(max, ticks) {
+  const rough = max / ticks;
+  const mag = Math.pow(10, Math.floor(Math.log10(rough || 1)));
+  for (const m of [1, 2, 5, 10]) { if (m * mag >= rough) return m * mag; }
+  return 10 * mag;
+}
+
+function renderFlowChart(flow) {
+  const lanes = FLOW_STACK.filter((l) => state.showParked || !PARKED_LANES.includes(l));
+  const times = flow.times.map((t) => Date.parse(t));
+  const n = times.length;
+  const W = 900, H = 260, left = 36, right = 12, top = 10, bottom = 24;
+  const innerW = W - left - right, innerH = H - top - bottom;
+  const totals = times.map((_, k) => lanes.reduce((sum, l) => sum + (flow.series[l][k] || 0), 0));
+  const maxTotal = Math.max(1, ...totals);
+  const step = niceStep(maxTotal, 4);
+  const yMax = Math.ceil(maxTotal / step) * step;
+  const x = (k) => left + (n > 1 ? (times[k] - times[0]) / (times[n - 1] - times[0]) * innerW : innerW / 2);
+  const y = (v) => top + innerH - (v / yMax) * innerH;
+
+  const svg = svgEl('svg', { class: 'flow-chart', viewBox: '0 0 ' + W + ' ' + H, role: 'img', 'aria-label': 'Cumulative flow: ' + lanes.map((l) => LANE_LABELS[l] + ' ' + flow.series[l][n - 1]).join(', ') + ' now' });
+  const grid = svgEl('g');
+  for (let v = 0; v <= yMax; v += step) {
+    grid.append(svgEl('line', { x1: left, x2: W - right, y1: y(v), y2: y(v), class: 'flow-grid' }), svgEl('text', { x: left - 6, y: y(v) + 3, 'text-anchor': 'end', class: 'flow-tick' }, String(v)));
+  }
+  const scale = buildTimeScale(times[0], times[n - 1]);
+  const span = Math.max(times[n - 1] - times[0], 1);
+  for (const t of scale.ticks) {
+    const px = left + ((t - times[0]) / span) * innerW;
+    grid.append(svgEl('line', { x1: px, x2: px, y1: top, y2: top + innerH, class: 'flow-grid' }), svgEl('text', { x: px, y: H - 8, 'text-anchor': 'middle', class: 'flow-tick' }, formatTick(t, scale.step)));
+  }
+  svg.append(grid);
+
+  const base = new Array(n).fill(0);
+  for (const lane of lanes) {
+    const tops = base.map((b, k) => b + (flow.series[lane][k] || 0));
+    let d = '';
+    for (let k = 0; k < n; k++) d += (k ? 'L' : 'M') + x(k).toFixed(1) + ',' + y(tops[k]).toFixed(1);
+    for (let k = n - 1; k >= 0; k--) d += 'L' + x(k).toFixed(1) + ',' + y(base[k]).toFixed(1);
+    svg.append(svgEl('path', { d: d + 'Z', fill: laneColor(lane), class: 'flow-area' }));
+    for (let k = 0; k < n; k++) base[k] = tops[k];
+  }
+
+  const cross = svgEl('line', { x1: 0, x2: 0, y1: top, y2: top + innerH, class: 'flow-cross', visibility: 'hidden' });
+  const hit = svgEl('rect', { x: left, y: top, width: innerW, height: innerH, class: 'flow-hit' });
+  const tooltipAt = (k) => {
+    const box = el('div', {}, el('div', { class: 'tooltip-key' }, fmtDate(flow.times[k])));
+    for (const lane of lanes.slice().reverse()) {
+      box.append(el('div', { class: 'tooltip-row' }, el('span', {}, el('span', { class: 'tooltip-swatch', style: '--chip-color:' + laneColor(lane) }), LANE_LABELS[lane]), el('span', {}, String(flow.series[lane][k] || 0))));
+    }
+    box.append(el('div', { class: 'tooltip-row tooltip-phase' }, el('span', {}, 'Total'), el('span', {}, String(totals[k]))));
+    return box;
+  };
+  hit.addEventListener('pointermove', (evt) => {
+    const rect = svg.getBoundingClientRect();
+    const px = ((evt.clientX - rect.left) / rect.width) * W;
+    let best = 0;
+    for (let k = 1; k < n; k++) { if (Math.abs(x(k) - px) < Math.abs(x(best) - px)) best = k; }
+    cross.setAttribute('x1', x(best)); cross.setAttribute('x2', x(best)); cross.setAttribute('visibility', 'visible');
+    $tooltip.textContent = ''; $tooltip.append(tooltipAt(best)); $tooltip.hidden = false;
+    positionTooltip(evt, svg);
+  });
+  hit.addEventListener('pointerleave', () => { cross.setAttribute('visibility', 'hidden'); $tooltip.hidden = true; });
+  svg.append(cross, hit);
+
+  const legend = el('div', { class: 'tl-legend' }, lanes.slice().reverse().map((l) => el('span', { class: 'tl-legend-item' }, el('span', { class: 'tl-legend-swatch', style: '--chip-color:' + laneColor(l) }), LANE_LABELS[l])));
+  return el('div', {}, legend, svg);
+}
+
+function renderFlow() {
+  $main.textContent = '';
+  const stats = state.data.stats;
+  const flow = state.data.flow;
+  if (!stats || !flow) { $main.append(el('p', { class: 'empty-note' }, 'This snapshot has no flow data. Publish again with ideamine 0.6 or later.')); return; }
+  $main.append(renderTiles(stats));
+  if (!flow.times.length) { $main.append(el('p', { class: 'empty-note' }, 'No ideas yet.')); return; }
+  $main.append(renderFlowChart(flow));
+}
+
+/* ---- matrix view: impact against size ---- */
+
+function renderMatrix() {
+  $main.textContent = '';
+  const ideas = visibleIdeas();
+  const placed = ideas.filter((i) => i.impact != null && SIZE_ORDER.includes(i.size));
+  const grid = el('div', { class: 'matrix', role: 'table' }, el('div', { class: 'mx-head mx-corner' }, 'impact ↓ size →'));
+  for (const size of SIZE_ORDER) grid.append(el('div', { class: 'mx-head', role: 'columnheader' }, size.toUpperCase()));
+  for (let impact = 5; impact >= 1; impact--) {
+    grid.append(el('div', { class: 'mx-head', role: 'rowheader' }, '▲' + impact));
+    for (const size of SIZE_ORDER) {
+      const cell = placed.filter((i) => i.impact === impact && i.size === size).sort((a, b) => a.rank - b.rank);
+      const win = impact === 5 && size === 'xs', avoid = impact === 1 && size === 'xl';
+      const node = el('div', { class: (win ? 'mx-win' : '') + (avoid ? ' mx-avoid' : ''), role: 'cell' },
+        cell.length ? el('span', { class: 'mx-count' }, String(cell.length)) : null,
+        cell.map((i) => el('button', { class: 'matrix-chip', type: 'button', onclick: () => openTicket(i.key) }, el('code', { class: 'card-key' }, i.key), el('span', {}, i.title))));
+      if (win) node.append(el('span', { class: 'mx-note' }, 'quick wins'));
+      if (avoid) node.append(el('span', { class: 'mx-note' }, 'avoid'));
+      grid.append(node);
+    }
+  }
+  $main.append(el('div', { class: 'matrix-wrap' }, grid));
+  const rest = ideas.length - placed.length;
+  if (rest) $main.append(el('p', { class: 'matrix-rest' }, rest + (rest === 1 ? ' idea has' : ' ideas have') + ' no triage yet, so no place here.'));
+}
+
+/* ---- actions: only when ideamine serve answers (data.api) ---- */
+
+async function act(idea, method, patch) {
+  state.busy = true;
+  state.actionError = '';
+  render();
+  try {
+    const res = await fetch('api/ideas/' + idea.id, { method, headers: { 'content-type': 'application/json' }, body: patch ? JSON.stringify(patch) : undefined });
+    if (!res.ok) {
+      let message = 'HTTP ' + res.status;
+      try { message = (await res.json()).error || message; } catch (err) { /* keep the status */ }
+      throw new Error(message);
+    }
+    if (method === 'DELETE') { state.openKey = null; history.replaceState(null, '', '#' + state.view); }
+    await refresh();
+  } catch (err) {
+    state.actionError = err && err.message ? err.message : 'request failed';
+  }
+  state.busy = false;
+  render();
+}
+
+function actionList(lane) {
+  if (lane === 'doing') return [['Done', 'done'], ['Drop', 'dropped'], ['Reopen', 'reopen']];
+  if (lane === 'done' || lane === 'dropped') return [['Reopen', 'reopen']];
+  return [['Start', 'doing'], ['Done', 'done'], ['Drop', 'dropped']];
+}
+
+function renderActions(idea) {
+  const busy = state.busy;
+  const buttons = actionList(idea.lane).map(([label, status]) => el('button', { class: 'action-btn', type: 'button', disabled: busy, onclick: () => act(idea, 'POST', { status }) }, label));
+  buttons.push(el('button', { class: 'action-btn action-danger', type: 'button', disabled: busy, onclick: () => { if (confirm('Delete ' + idea.key + ' for good?')) act(idea, 'DELETE'); } }, 'Delete'));
+  const select = el('select', { class: 'action-select', 'aria-label': 'Model', disabled: busy },
+    idea.model ? null : el('option', { value: '', selected: true }, 'model…'),
+    MODELS.map((m) => el('option', { value: m, selected: idea.model === m }, m)));
+  select.addEventListener('change', () => { if (select.value) act(idea, 'POST', { model: select.value }); });
+  const note = el('textarea', { class: 'action-note', rows: '2', placeholder: 'Add a note…', 'aria-label': 'Note', disabled: busy });
+  const addNote = el('button', { class: 'action-btn', type: 'button', disabled: busy, onclick: () => { const text = note.value.trim(); if (text) act(idea, 'POST', { note: text }); } }, 'Add note');
+  return el('section', { class: 'drawer-section' }, el('h3', {}, 'Actions'),
+    el('div', { class: 'action-row' }, buttons, select),
+    el('div', { class: 'action-row' }, note, addNote),
+    state.actionError ? el('p', { class: 'action-error', role: 'alert' }, state.actionError) : null);
+}
+
 /* ---- search: semantic first, word fallback ---- */
 
 function wordSearch(q) {
@@ -769,6 +1125,7 @@ function buildDrawerContent(idea) {
   if (metaLines.length) frag.append(el('p', { class: 'drawer-meta' }, metaLines.join(' · ')));
 
   frag.append(renderDateGrid(idea));
+  if (state.data.api) frag.append(renderActions(idea));
 
   if (idea.text) frag.append(el('section', { class: 'drawer-section' }, el('h3', {}, 'Text'), el('p', { class: 'drawer-text' }, idea.text)));
   if (idea.why) frag.append(el('section', { class: 'drawer-section' }, el('h3', {}, 'Why'), el('p', { class: 'drawer-text' }, idea.why)));
@@ -828,6 +1185,10 @@ function render() {
   renderTabsActive();
   if (state.query.trim() !== '') renderSearch();
   else if (state.view === 'timeline') renderTimeline();
+  else if (state.view === 'table') renderTable();
+  else if (state.view === 'projects') renderProjects();
+  else if (state.view === 'flow') renderFlow();
+  else if (state.view === 'matrix') renderMatrix();
   else if (state.view === 'groups') renderGroups();
   else renderBoard();
   renderDrawer();
@@ -835,7 +1196,7 @@ function render() {
 
 function applyHash() {
   const raw = decodeURIComponent(location.hash.slice(1));
-  if (raw === 'board' || raw === 'timeline' || raw === 'groups') {
+  if (VIEWS.includes(raw)) {
     state.view = raw;
     state.openKey = null;
   } else if (/^IDEA-\d+$/i.test(raw)) {
@@ -874,20 +1235,46 @@ function bindStaticEvents() {
   document.addEventListener('click', () => { $tooltip.hidden = true; });
 }
 
+function setData(data) {
+  state.data = data;
+  state.byId = new Map();
+  state.byKey = new Map();
+  vecCache.clear();
+  for (const idea of data.ideas) {
+    state.byId.set(idea.id, idea);
+    state.byKey.set(idea.key.toUpperCase(), idea);
+  }
+}
+
+/** Fetch data.json when it changed. Resolves to true when there is new data. */
+async function refresh() {
+  const headers = state.etag ? { 'If-None-Match': state.etag } : {};
+  const res = await fetch('data.json', { cache: 'no-store', headers });
+  if (res.status === 304) return false;
+  if (!res.ok) throw new HttpError(res.status);
+  state.etag = res.headers.get('etag');
+  setData(await res.json());
+  return true;
+}
+
+/** Every POLL_MS: new data repaints the page, unless the reader is typing in the drawer. */
+async function poll() {
+  if (document.visibilityState !== 'visible' || state.busy || $drawer.contains(document.activeElement)) return;
+  try {
+    if (await refresh()) render();
+  } catch (err) {
+    // The next poll tries again; the page keeps the data it has.
+  }
+}
+
 async function main() {
   bindStaticEvents();
   try {
-    const res = await fetch('data.json', { cache: 'no-store' });
-    if (!res.ok) throw new HttpError(res.status);
-    const data = await res.json();
-    state.data = data;
-    for (const idea of data.ideas) {
-      state.byId.set(idea.id, idea);
-      state.byKey.set(idea.key.toUpperCase(), idea);
-    }
+    await refresh();
     window.addEventListener('hashchange', onHashChange);
     applyHash();
     render();
+    setInterval(poll, POLL_MS);
   } catch (err) {
     renderLoadError(err);
   }
