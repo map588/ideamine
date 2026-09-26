@@ -386,6 +386,30 @@ npm test
 
 The tests use `node:test`, and [fast-check](https://fast-check.dev) for the property tests. fast-check is a development dependency only: the plugin itself installs nothing. The tests cover the store, including concurrent writers from several processes, the hook, the MCP protocol, headless triage with pairing, the watcher, embeddings and groups, and the dashboard upload. Triage runs against a stand-in `claude`, and embeddings and uploads run against a stand-in server, so the tests spend no tokens and need no network.
 
+## More projects
+
+- [SubRead](https://subread.space/): read along with an audiobook, in the browser.
+  Also [for Android](https://github.com/equwal/subread-android/releases/latest),
+  [for YouTube](https://github.com/equwal/subread-extension/releases/latest)
+  and [for KOReader](https://github.com/equwal/subread.koplugin).
+- [SubRead Overlay](https://github.com/equwal/subread-overlay/releases/latest): subtitle lines over any Android media player.
+- [SubRead Dictionary](https://github.com/equwal/subread-dictionary/releases/latest): a pop-up dictionary for Android that reads Yomitan dictionaries.
+- [SubRead Anki](https://github.com/equwal/subread-anki): one tap makes an Anki card from any Android app.
+- [Subrep](https://github.com/equwal/subrep-android/releases/latest): live captions of the sound of your phone.
+- [Book Simulator](https://booksimulator.com/): a reading room for Aozora Bunko and Project Gutenberg books.
+- [honjimaku.com](https://honjimaku.com/): subtitles for Japanese audiobooks.
+- [sbm Sync](https://sbmsync.com/): your bookmarks, the same on every device,
+  with [sbm](https://github.com/equwal/sbm) for dmenu,
+  [sbm for Android](https://github.com/equwal/sbm-android/releases/latest)
+  and the [sbm add-on](https://github.com/equwal/sbm-extension/releases/latest) for Firefox and Chrome.
+- [Rebind](https://github.com/equwal/rebind/releases): remap the hardware buttons of e-ink readers and Android,
+  with [Ink Recents](https://github.com/equwal/ink-recents/releases/latest),
+  [Ink Dim](https://github.com/equwal/ink-dim/releases/latest)
+  and [Ink Update](https://github.com/equwal/ink-update/releases/latest).
+- [dickt.store](https://dickt.store/): language-learning tools, flashcards and web toys.
+- [hentaibun.online](https://hentaibun.online/): learn kanbun and kobun.
+- [Recently Written](https://recentlywritten.com/): the blog, and a list of [all projects](https://recentlywritten.com/projects.html).
+
 ## License
 
 MIT
