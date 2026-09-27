@@ -6,7 +6,8 @@
 //   archive that it changes is on the ideamine server, and the Prompts and Memory tabs come from
 //   there too.
 // - On a server (sync off), it holds the archive for every machine: the machines sync with /api/db
-//   and /api/ops, and send their prompts to /api/prompts. With memstate_url, the Memory tab shows
+//   and /api/ops, read the vectors of the ideas from /api/vectors, and send their prompts to
+//   /api/prompts. With memstate_url, the Memory tab shows
 //   the memories of a memstated daemon. nginx in front of it names the server in serve_hosts.
 //
 // The server listens on 127.0.0.1 only, and it takes commands only from its own page.
@@ -19,6 +20,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as archive from './archive.js';
 import * as config from './config.js';
+import * as embed from './embed.js';
 import * as publish from './publish.js';
 import { renderAdded, stamp } from './render.js';
 import * as store from './store.js';
@@ -177,9 +179,13 @@ async function liveData() {
   };
 }
 
-/** Search by meaning on the page: the page sends its query to the embedding server through here. */
+/**
+ * Search by meaning on the page: the page sends its query to the embedding server through here.
+ * With sync on, that is the ideamine server, so that the query and the vectors come from one model.
+ */
 async function proxyEmbeddings(req, res) {
-  const endpoint = `${config.get('embed_url').replace(/\/+$/, '')}/embeddings`;
+  const base = sync.enabled() ? `${sync.serverUrl()}v1` : config.get('embed_url');
+  const endpoint = `${base.replace(/\/+$/, '')}/embeddings`;
   let upstream;
   try {
     upstream = await fetch(endpoint, {
@@ -491,6 +497,14 @@ const READ_ONLY = new Set(['ask', 'watch']);
 /** The reads and changes of the server role. Resolves to false for a route that it does not have. */
 async function serverRoute(req, res, route, query) {
   if (route === 'GET /api/db') return send(res, 200, { ok: true, db: store.load() });
+  if (route === 'GET /api/vectors') {
+    try {
+      return send(res, 200, { ok: true, ...(await embed.vectorItems(store.load().ideas)) });
+    } catch (e) {
+      if (!(e instanceof embed.EmbedError)) throw e;
+      return send(res, 503, { ok: false, error: e.message });
+    }
+  }
   if (route === 'POST /api/ops') {
     const { ops } = await readJson(req);
     return send(res, 200, { ok: true, results: applyChanges(ops), db: store.load() });

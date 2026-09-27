@@ -105,6 +105,8 @@ ideamine embed
 
 Claude can search by meaning with `idea_list` and `semantic: true`, and group with `groups: true`.
 
+With [sync](#one-archive-for-every-machine) on, the ideamine server holds the vectors. It embeds each idea once for every machine, with its own embedding server and model, and a machine that syncs reads the vectors from `/api/vectors` and keeps no `vectors.json`. The search query goes through the server too, so the query and the ideas get their vectors from one model. `embed_url` and `embed_model` then matter only on the server. When the copy of an idea on a machine is newer than the one on the server, for example while a change waits in the outbox, the server embeds that text too, and nothing is kept on the machine.
+
 ## Dashboard
 
 `ideamine publish` makes a web page of your ideas. A ticket opens a preview with the brief, the notes, and the related ideas, and the search box finds ideas by meaning in every view. The page is one static file, `index.html`, and it reads a snapshot, `data.json`. It loads nothing from the internet. Skip and dropped ideas show only when you tick "Show parked".
@@ -209,6 +211,8 @@ server {
 ```
 
 `serve_hosts` names the Host that nginx sends. Without it, the server refuses the request, so a DNS rebinding page cannot reach the archive. The server does not ask who you are: the network decides who can reach it. Put it only on a private network like WireGuard.
+
+The server also makes the vectors for [search by meaning and groups](#search-by-meaning-and-groups), for every machine: set `embed_url` on the server. The machines read the vectors from `/api/vectors`.
 
 ### HTTPS for a name that is only on the tunnel
 
@@ -328,7 +332,7 @@ Tools: `idea_add`, `idea_list`, `idea_triage`, `idea_update`, `idea_next`, `idea
 
 ## Where your ideas live
 
-`~/.ideamine/ideas.json` is plain, readable JSON. Set `IDEAMINE_HOME` to move it, for example into a synced folder. Each write takes a lock and then replaces the file in one step, so many sessions can write at the same time without losing an idea. The previous version is kept as `ideas.json.bak`. If the file becomes damaged, ideamine stops and does not overwrite it. Nothing leaves your machine, except in these cases: triage and builds go through Claude as usual; search by meaning and groups send the text of your ideas to the embedding server that you set; `ideamine publish` uploads a snapshot to the dashboard server that you set; with sync on, the archive is on the ideamine server, and with the prompt log on, your prompts go there too. So that it can pair ideas with projects, the triage also sends the paths of your project folders and the first line of each README.
+`~/.ideamine/ideas.json` is plain, readable JSON. Set `IDEAMINE_HOME` to move it, for example into a synced folder. Each write takes a lock and then replaces the file in one step, so many sessions can write at the same time without losing an idea. The previous version is kept as `ideas.json.bak`. If the file becomes damaged, ideamine stops and does not overwrite it. Nothing leaves your machine, except in these cases: triage and builds go through Claude as usual; search by meaning and groups send the text of your ideas to the embedding server that you set, or with sync on to the one of the ideamine server; `ideamine publish` uploads a snapshot to the dashboard server that you set; with sync on, the archive is on the ideamine server, and with the prompt log on, your prompts go there too. So that it can pair ideas with projects, the triage also sends the paths of your project folders and the first line of each README.
 
 `ideamine config` shows each setting and where its value comes from. `ideamine config <key> <value>` saves a setting in `~/.ideamine/config.json`, and an empty value restores the default. An environment variable wins over the file.
 
@@ -338,8 +342,8 @@ Tools: `idea_add`, `idea_list`, `idea_triage`, `idea_update`, `idea_next`, `idea
 | `IDEAMINE_TRIAGE_MODEL` | | `sonnet` | model for the headless triage |
 | `IDEAMINE_CLAUDE_BIN` | | `claude` | Claude Code executable |
 | `IDEAMINE_SETTING_SOURCES` | | *(empty)* | set to `user` if your login needs `settings.json` (e.g. `apiKeyHelper`) |
-| `IDEAMINE_EMBED_URL` | `embed_url` | `http://127.0.0.1:11434/v1` | OpenAI-compatible embeddings API (Ollama, llama.cpp server) |
-| `IDEAMINE_EMBED_MODEL` | `embed_model` | `nomic-embed-text` | embedding model; nomic models get their task prefixes |
+| `IDEAMINE_EMBED_URL` | `embed_url` | `http://127.0.0.1:11434/v1` | OpenAI-compatible embeddings API (Ollama, llama.cpp server); with sync on, the one of the server applies |
+| `IDEAMINE_EMBED_MODEL` | `embed_model` | `nomic-embed-text` | embedding model; nomic models get their task prefixes; with sync on, the one of the server applies |
 | `IDEAMINE_SEARCH_THRESHOLD` | `search_threshold` | `0.5` | lowest similarity of a search result |
 | `IDEAMINE_GROUP_THRESHOLD` | `group_threshold` | `0.65` | lowest mean similarity in a group, and of a related idea |
 | `IDEAMINE_PUBLISH_URL` | `publish_url` | *(off)* | dashboard server for `ideamine publish` |
@@ -364,6 +368,7 @@ Tools: `idea_add`, `idea_list`, `idea_triage`, `idea_update`, `idea_next`, `idea
 watcher on: any prompt ──► hook ──► background pass ──► claude -p (Haiku) ──► verdicts + a project for each idea
 
 /ideas-find, /ideas-groups ──► hook ──► embedding server (new ideas only) ──► cosine similarity ──► answer
+            with sync on  ──► hook ──► ideamine server /api/vectors (it embeds new ideas) ──► cosine similarity here
 publish on: any prompt after a change ──► hook ──► background publish ──► PUT index.html + data.json
 
 /ideas-web       ──► hook ──► ideamine serve on 127.0.0.1 ──► the buttons on the page ──► the same archive

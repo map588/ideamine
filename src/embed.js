@@ -3,12 +3,17 @@
 // that a content hash keeps current, cosine similarity with a threshold, and word search when the
 // embedding server does not answer. The groups and the "related" links come from the vectors, so
 // ideamine needs no graph database.
+//
+// With sync on, the ideamine server holds the vectors. It embeds each idea once for every machine,
+// with its own embedding server and model. A machine that syncs reads the vectors from /api/vectors,
+// sends its search queries through the server too, and keeps no vectors of its own.
 
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import * as config from './config.js';
 import { home, listIdeas, load, withLock, writeAtomic } from './store.js';
+import * as sync from './sync.js';
 import { clip, wordSet } from './text.js';
 
 const MAX_CHARS = 1500; // the first cut; embed() halves a text again when the server says it is too long
@@ -103,10 +108,9 @@ async function post(texts, { url, model, timeoutMs }) {
 /**
  * Unit vectors for the texts, with the document or the query prefix. When the server says that a
  * text is too long, it embeds the texts one at a time and halves each text that is still too long.
+ * `url` and `model` name the embedding server; by default it is the one of this machine.
  */
-export async function embed(texts, { query = false, timeoutMs = 30000 } = {}) {
-  const url = config.get('embed_url');
-  const model = config.get('embed_model');
+export async function embed(texts, { query = false, timeoutMs = 30000, url = config.get('embed_url'), model = config.get('embed_model') } = {}) {
   const wrap = (t) => (query ? queryText(model, t) : documentText(model, t));
   const first = texts.map((t) => cut(String(t), MAX_CHARS));
   try {
@@ -150,9 +154,8 @@ function saveVectors(model, entries) {
   });
 }
 
-/** A vector for each idea. Only new and changed ideas go to the server; the others come from the cache. */
-export async function vectorsFor(ideas, { timeoutMs } = {}) {
-  const model = config.get('embed_model');
+/** Vectors made here. Only new and changed ideas go to the embedding server; the others come from vectors.json. */
+async function localVectors(ideas, { timeoutMs, url, model }) {
   const cached = readVectors(model);
   const vectors = new Map();
   const todo = [];
@@ -164,11 +167,92 @@ export async function vectorsFor(ideas, { timeoutMs } = {}) {
   }
   for (let i = 0; i < todo.length; i += BATCH) {
     const part = todo.slice(i, i + BATCH);
-    const vecs = await embed(part.map((t) => t.text), { timeoutMs });
+    const vecs = await embed(part.map((t) => t.text), { timeoutMs, url, model });
     part.forEach((t, k) => vectors.set(t.id, vecs[k]));
     saveVectors(model, part.map((t, k) => [t.id, { hash: t.hash, vec: encodeVec(vecs[k]) }]));
   }
   return vectors;
+}
+
+/** True when the vectors come from the ideamine server: sync is on. */
+export const fromServer = () => sync.enabled();
+
+const SERVER_TIMEOUT_MS = 30000;
+
+/** The vectors of the ideamine server: { model, items: { [id]: { hash, vec } } }. Throws EmbedError. */
+async function serverItems(timeoutMs = SERVER_TIMEOUT_MS) {
+  const target = new URL('api/vectors', sync.serverUrl());
+  let res;
+  try {
+    res = await fetch(target, { signal: AbortSignal.timeout(timeoutMs) });
+  } catch (e) {
+    const why = e.name === 'TimeoutError' ? `no answer in ${timeoutMs / 1000} s` : e.cause?.code || e.cause?.message || e.message;
+    throw new EmbedError(`cannot reach the ideamine server ${target.origin} (${why})`);
+  }
+  // A server from before 0.12.0 has no /api/vectors.
+  if (res.status === 404) throw new EmbedError(`the ideamine server ${target.origin} sends no vectors. Update it to ideamine 0.12.0 or later.`);
+  const text = await res.text();
+  let json = null;
+  try {
+    json = JSON.parse(text);
+  } catch {
+    // Not JSON: the error below shows the text.
+  }
+  if (!res.ok || !json?.ok || typeof json.model !== 'string' || !json.items) {
+    throw new EmbedError(`the ideamine server ${target.origin} answered ${res.status}: ${json?.error || clip(text, 160)}`);
+  }
+  return json;
+}
+
+/**
+ * Vectors from the ideamine server. An idea that the server does not have in this version yet, for
+ * example after a change that waits in the outbox, is embedded through the server. Nothing is kept here.
+ */
+async function serverVectors(ideas, { timeoutMs }) {
+  const { model, items } = await serverItems(timeoutMs);
+  const url = `${sync.serverUrl()}v1`;
+  const vectors = new Map();
+  const todo = [];
+  for (const idea of ideas) {
+    const text = ideaText(idea);
+    const item = items[idea.id];
+    if (item?.hash === hashOf(model, text)) vectors.set(idea.id, decodeVec(item.vec));
+    else todo.push({ id: idea.id, text });
+  }
+  for (let i = 0; i < todo.length; i += BATCH) {
+    const part = todo.slice(i, i + BATCH);
+    const vecs = await embed(part.map((t) => t.text), { timeoutMs, url, model });
+    part.forEach((t, k) => vectors.set(t.id, vecs[k]));
+  }
+  return { vectors, model, url, where: `the ideamine server ${new URL(sync.serverUrl()).origin}` };
+}
+
+/**
+ * A vector for each idea, with the model and the embedding server that made them, and where the
+ * vectors are kept: { vectors, model, url, where }. With sync on they come from the ideamine server,
+ * else from this machine. Throws EmbedError when the server does not answer.
+ */
+export async function vectorSet(ideas, { timeoutMs } = {}) {
+  if (fromServer()) return serverVectors(ideas, { timeoutMs });
+  const url = config.get('embed_url');
+  const model = config.get('embed_model');
+  return { vectors: await localVectors(ideas, { timeoutMs, url, model }), model, url, where: vectorsPath() };
+}
+
+/** A vector for each idea, by id. See vectorSet. */
+export async function vectorsFor(ideas, options) {
+  return (await vectorSet(ideas, options)).vectors;
+}
+
+/**
+ * What the ideamine server sends to the machines that sync with it: its model, and the hash and the
+ * vector of each idea. Ideas that have no current vector are embedded first.
+ */
+export async function vectorItems(ideas, { timeoutMs } = {}) {
+  const model = config.get('embed_model');
+  await localVectors(ideas, { timeoutMs, url: config.get('embed_url'), model });
+  const cached = readVectors(model);
+  return { model, items: Object.fromEntries(ideas.filter((i) => cached[i.id]).map((i) => [i.id, cached[i.id]])) };
 }
 
 /**
@@ -275,8 +359,9 @@ export async function find(db, query, { filter = 'all', project = null, limit = 
   const ideas = listIdeas(db, { filter, project });
   threshold ??= config.get('search_threshold');
   try {
-    const vectors = await vectorsFor(ideas, { timeoutMs });
-    const [q] = await embed([query], { query: true, timeoutMs });
+    // The query goes to the embedding server that made the vectors, so that both come from one model.
+    const { vectors, model, url } = await vectorSet(ideas, { timeoutMs });
+    const [q] = await embed([query], { query: true, timeoutMs, url, model });
     const results = ideas
       .map((idea) => ({ idea, score: cosine(q, vectors.get(idea.id)) }))
       .filter((r) => r.score >= threshold)
@@ -293,19 +378,17 @@ export async function find(db, query, { filter = 'all', project = null, limit = 
 const percentile = (sorted, p) => sorted[Math.min(sorted.length - 1, Math.floor(p * sorted.length))];
 
 /**
- * Embed every idea that has no current vector, then describe the set, like memstate's `embed
- * status`: coverage, the nearest-neighbour similarity of each idea, and how many ideas the
+ * Embed every idea that has no current vector (on the ideamine server when sync is on), then
+ * describe the set, like memstate's `embed status`: coverage, the nearest-neighbour similarity of each idea, and how many ideas the
  * thresholds keep. Use it to set group_threshold and search_threshold for a new model.
  */
 export async function status(db, { timeoutMs } = {}) {
-  const url = config.get('embed_url');
-  const model = config.get('embed_model');
   const groupThreshold = config.get('group_threshold');
+  const { vectors, model, url, where } = await vectorSet(db.ideas, { timeoutMs });
   const lines = [`model ${model} at ${url}`];
-  const vectors = await vectorsFor(db.ideas, { timeoutMs });
   const ids = db.ideas.map((i) => i.id);
   const dim = vectors.size ? vectors.values().next().value.length : 0;
-  lines.push(`vectors ${vectors.size}/${ids.length}${dim ? `, ${dim} dimensions` : ''} · ${vectorsPath()}`);
+  lines.push(`vectors ${vectors.size}/${ids.length}${dim ? `, ${dim} dimensions` : ''} · ${where}`);
   if (ids.length > 1) {
     const nn = ids.map((id) => nearest(id, ids, vectors, { k: 1 })[0]?.score ?? 0).sort((a, b) => a - b);
     const p = (x) => percentile(nn, x).toFixed(2);

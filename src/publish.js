@@ -117,8 +117,7 @@ export function stats(ideas, { now = Date.now() } = {}) {
 }
 
 /** data.json (version 1). The dashboard page reads it; its format is in the README. */
-export function snapshot(db, { vectors = null, groups = [], generated = new Date().toISOString() } = {}) {
-  const model = config.get('embed_model');
+export function snapshot(db, { vectors = null, groups = [], model = config.get('embed_model'), generated = new Date().toISOString() } = {}) {
   const groupThreshold = config.get('group_threshold');
   const rank = new Map(listIdeas(db, { filter: 'all' }).map((idea, n) => [idea.id, n]));
   const groupOf = new Map();
@@ -177,17 +176,18 @@ export function snapshot(db, { vectors = null, groups = [], generated = new Date
 /** The snapshot, with groups when the embedding server answers. `note` says why there are none. */
 export async function build(db, { timeoutMs = 60000 } = {}) {
   let vectors = null;
+  let model; // the model that made the vectors: with sync on, the one of the ideamine server
   let groups = [];
   let note = '';
   try {
-    vectors = await embed.vectorsFor(db.ideas, { timeoutMs });
+    ({ vectors, model } = await embed.vectorSet(db.ideas, { timeoutMs }));
     groups = await embed.groupIdeas(db.ideas, { vectors });
   } catch (e) {
     if (!(e instanceof embed.EmbedError)) throw e;
     vectors = null;
     note = `published without search by meaning or groups: ${e.message}`;
   }
-  return { data: snapshot(db, { vectors, groups }), note };
+  return { data: snapshot(db, { vectors, groups, model }), note };
 }
 
 async function put(url, body, type) {
